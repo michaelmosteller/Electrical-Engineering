@@ -1,0 +1,398 @@
+Main.c
+
+#include <msp430.h>
+#include <stdio.h>
+#include "LiquidCrystal_I2C.h"
+
+char Buffer1[8] = {0};
+int Buffervalue[4] = {0};
+unsigned int IncrBuffervalue = 0;
+
+unsigned char messagesent = 0;
+unsigned int NewDutyCycle = 0;
+
+int interruptflag = 0;
+char value[] = {0,0,0,0,0,0};
+char DutyCycleTry2[] = {0,0,0,0};
+
+char DutyCycleTry2_3;
+char DutyCycleTry2_2;
+char DutyCycleTry2_1;
+
+volatile unsigned int char_count = 0;
+volatile unsigned int timeout_counter = 0;
+
+int main(void)
+{
+    WDTCTL = WDTPW | WDTHOLD;
+    UCA0CTLW0 |= UCSWRST;
+    UCA0CTLW0 |= UCSSEL__SMCLK;               // Clock source SMCLK
+    UCA0BR0 = 6;                              // Baud Rate 9600
+    UCA0MCTLW = 0x2081;
+
+    P1SEL1 &= ~BIT6;                          // configure to rx pin
+    P1SEL0 |= BIT6;                           // Rx is in pin 1.6
+    P1SEL1 &= ~BIT7;                          // configure to tx pin
+    P1SEL0 |= BIT7;                           // Tx is in pin 1.7
+
+    PM5CTL0 &= ~LOCKLPM5;
+
+    UCA0CTLW0 &= ~UCSWRST;                    // Initialize UART
+    UCA0IE |= UCRXIE;                         // Enable USCI_A1 RX interrupt
+    __enable_interrupt();
+
+    // Configure motor PWM output on P6.1
+    P6DIR |= BIT1;                            // Set pin 6.1 as output
+    P6OUT &= ~BIT1;                           // Start with motor off
+
+    TB0CTL = TBSSEL__ACLK | MC__UP | TBCLR;
+
+    TB0CCR0 = 1000;                           // PWM period
+    TB0CCR1 = 0;                              // Initial duty cycle
+
+    TB0CCTL0 |= CCIE;                         // Enable CCR0 interrupt
+    TB0CCTL1 |= CCIE;
+
+    TB0CCTL0 &= ~CCIFG;                       // Clear CCR0 flag
+    TB0CCTL1 &= ~CCIFG;
+
+    // Initialize LCD
+    I2C_Init(0x27);
+    LCD_Setup();
+    LCD_SetCursor(0, 0);
+    LCD_ClearDisplay();
+    LCD_Write("Fan Speed: ");
+    LCD_WriteNum(0);
+
+    // Timeout timer setup
+    TB1CTL = TBSSEL__ACLK | MC__UP | TBCLR;
+    TB1CCR0 = 16384;
+    TB1CCTL0 |= CCIE;
+    TB1CCTL0 &= ~CCIFG;
+
+    while(1)
+    {
+        if(messagesent == 1)
+        {
+            LCD_ClearDisplay();
+            LCD_Write("Fan Speed: ");
+            LCD_WriteNum(DutyCycleTry2_3 - '0');
+            LCD_WriteNum(DutyCycleTry2_2 - '0');
+            LCD_WriteNum(DutyCycleTry2_1 - '0');
+
+            NewDutyCycle = ((100*(DutyCycleTry2_3 - '0'))+(10*(DutyCycleTry2_2 - '0'))+(DutyCycleTry2_1 - '0'));
+            if(NewDutyCycle >= 100)
+                NewDutyCycle = 99;
+
+            TB0CCR1 = NewDutyCycle * 10;
+
+            IncrBuffervalue = 0;
+            messagesent = 0;
+        }
+    }
+
+    return 0;
+}
+
+/*****************************
+*      vector interrupts     *
+*****************************/
+
+#pragma vector=TIMER0_B0_VECTOR
+__interrupt void ISR_TB0_CCR0(void)
+{
+    if(TB0CCR1 != 0)
+    {
+        P6OUT |= BIT1;                        // turn on motor
+    }
+    TB0CCTL0 &= ~CCIFG;
+}
+
+#pragma vector=TIMER0_B1_VECTOR
+__interrupt void ISR_TB0_CCR1(void)
+{
+    P6OUT &= ~BIT1;                           // turn off motor
+    TB0CCTL1 &= ~CCIFG;
+}
+
+#pragma vector=TIMER1_B0_VECTOR
+__interrupt void ISR_TB1_CCR0(void)
+{
+    timeout_counter++;
+
+    if(char_count > 0 && timeout_counter > 1)
+    {
+        char last_char = value[0];
+        int speed;
+
+        if(last_char >= '0' && last_char <= '9')
+        {
+            speed = (last_char - '0') * 10;
+        }
+        else if(last_char == 'a' || last_char == 'A')
+        {
+            speed = 100;
+        }
+        else
+        {
+            speed = 0;
+        }
+
+        DutyCycleTry2_3 = (speed / 100) + '0';
+        DutyCycleTry2_2 = ((speed / 10) % 10) + '0';
+        DutyCycleTry2_1 = (speed % 10) + '0';
+
+        messagesent = 1;
+        char_count = 0;
+        timeout_counter = 0;
+    }
+
+    TB1CCTL0 &= ~CCIFG;
+}
+
+#pragma vector=USCI_A0_VECTOR
+__interrupt void USCI_A0_ISR(void)
+{
+    char received_char = UCA0RXBUF;
+    char_count++;
+    timeout_counter = 0;
+
+    int speed;
+
+    if(received_char >= '0' && received_char <= '9')
+    {
+        speed = (received_char - '0') * 10;
+    }
+    else if(received_char == 'a' || received_char == 'A')
+    {
+        speed = 100;
+    }
+    else
+    {
+        speed = 0;
+    }
+
+    DutyCycleTry2_3 = (speed / 100) + '0';
+    DutyCycleTry2_2 = ((speed / 10) % 10) + '0';
+    DutyCycleTry2_1 = (speed % 10) + '0';
+
+    messagesent = 1;
+
+    value[5] = value[4];
+    value[4] = value[3];
+    value[3] = value[2];
+    value[2] = value[1];
+    value[1] = value[0];
+    value[0] = received_char;
+}
+
+
+LiquidCrystal_I2C.H
+
+/*
+ * LiquidCrystal_I2C.h
+ */
+
+#ifndef LIQUIDCRYSTAL_I2C_H_
+#define LIQUIDCRYSTAL_I2C_H_
+
+extern unsigned int TXBUF;
+
+#define LCD_4_BIT 0x20
+#define LCD_init  0x30
+
+// commands
+#define LCD_CLEARDISPLAY 0x01       // These are shortcuts for the commands in hex.
+#define LCD_RETURNHOME 0x02
+#define LCD_ENTRYMODESET 0x04
+#define LCD_DISPLAYCONTROL 0x08
+#define LCD_CURSORSHIFT 0x10
+#define LCD_FUNCTIONSET 0x20
+#define LCD_SETCGRAMADDR 0x40
+#define LCD_SETDDRAMADDR 0x80
+
+// flags for display entry mode
+#define LCD_ENTRYRIGHT 0x00
+#define LCD_ENTRYLEFT 0x02
+#define LCD_ENTRYSHIFTINCREMENT 0x01
+#define LCD_ENTRYSHIFTDECREMENT 0x00
+
+// flags for display on/off control
+#define LCD_DISPLAYON 0x04
+#define LCD_DISPLAYOFF 0x00
+#define LCD_CURSORON 0x02
+#define LCD_CURSOROFF 0x00
+#define LCD_BLINKON 0x01
+#define LCD_BLINKOFF 0x00
+
+// flags for display/cursor shift
+#define LCD_DISPLAYMOVE 0x08
+#define LCD_CURSORMOVE 0x00
+#define LCD_MOVERIGHT 0x04
+#define LCD_MOVELEFT 0x00
+
+// flags for function set
+#define LCD_8BITMODE 0x10       // These are standard for 2x16
+#define LCD_4BITMODE 0x00
+#define LCD_2LINE 0x08
+#define LCD_1LINE 0x00
+#define LCD_5x10DOTS 0x04
+#define LCD_5x8DOTS 0x00
+
+// flags for backlight control
+#define LCD_BACKLIGHT 0x08
+#define LCD_NOBACKLIGHT 0x00
+
+#define En 0x04  // Enable bit
+#define Rw 0x02  // Read/Write bit
+#define Rs 0x01  // Register select bit
+
+// Declare the functions in the header:
+void I2C_Init(int addr);        // Address of the device in the argument.
+void I2C_Send (int value);
+void pulseEnable (int value);
+void write4bits (int value);
+void LCD_Send(int value, int mode) ;
+void LCD_Write (char *text);
+void LCD_WriteNum(unsigned int num);
+void LCD_SetCursor(int col, int row);
+void LCD_ClearDisplay(void);
+void LCD_leftToRight(void) ;
+void LCD_rightToLeft(void) ;
+void LCD_Setup(void);
+
+#endif /* LIQUIDCRYSTAL_I2C_H_ */
+
+
+
+LiquidCrystal_I2C.C
+
+#include <msp430.h>
+#include "LiquidCrystal_I2C.h"
+#include <string.h>
+
+unsigned int TXBUF;             // The value to put in the buffer to transmit information.
+
+void I2C_Init(int addr){
+    UCB0CTLW0 |= UCSWRST;       // Put eUSCI_B0 into software reset
+
+    //-- Configure uUSCI_B0-------------------------------------------
+    UCB0CTLW0 |= UCSSEL_3;      // Choose BRCLK = SMCLK = 1MHz
+    UCB0BRW = 10;               // Divide BRCLK by 10 for SCL = 100kHz
+
+    UCB0CTLW0 |= UCMODE_3;      // Put into I2C Mode
+    UCB0CTLW0 |= UCMST;         // Put into Master Mode
+    UCB0CTLW0 |= UCTR;          // Put into Tx Mode
+    UCB0I2CSA = addr;           // Slave Address = 0x27
+
+    UCB0CTLW1 |= UCASTP_2;      // Auto stop when UCB0TBCNT reached
+    UCB0TBCNT =0x01;            // Send 1 byte of data
+
+    //-- Configure Ports----------------------------------------------
+    P1SEL1 &= ~BIT3;            // P1.3 = SCL
+    P1SEL0 |=  BIT3;
+
+    P1SEL1 &= ~BIT2;            // P1.2 = SDA
+    P1SEL0 |=  BIT2;
+
+    PM5CTL0 &= ~LOCKLPM5;       // Turn on GPIO
+    //-- Take eUSCI_B0 out of SW reset---------------------------------
+    UCB0CTLW0 &= ~UCSWRST;      // Put eUSCI_B0 out of software reset
+
+    UCB0IE |= UCTXIE0;          // Enable I2C_B0 Tx IRQ
+    __enable_interrupt();
+}
+void I2C_Send (int value){
+    UCB0CTLW0 |= UCTXSTT;       // Generate a START condition.
+    TXBUF = value;              // Put what you want (store the data) to transmit into the Tx buffer register. See the interrupt vector below.
+}
+void pulseEnable (int value){
+    I2C_Send (value | En);      // En high
+    __delay_cycles(150);        // enable pulse must be >450ns
+    I2C_Send(value  & ~En);     // En low
+    __delay_cycles(1500);       // commands need > 37us to settle
+}
+void write4bits (int value) {
+    I2C_Send (value);
+    __delay_cycles(50);
+    pulseEnable (value);
+}
+void LCD_Send(int value, int mode) {
+    int high_b = value & 0xF0;
+    int low_b = (value << 4) & 0xF0;            // Shift the bits to the left and then set all bits except the ones in 0xF0 to 0.
+    write4bits ( high_b | mode);                // write4bits is a function call with one arg and the arg is the result of a bitwise or | (one pipe symbol).
+    write4bits ( low_b  | mode);                // The arg of write4bits uses 4 bits for the value and 4 bits for the mode.
+                                                // It is being called first with high bits, then with th elow bits to write 8 bits.
+}
+void LCD_Write (char *text){
+    unsigned int i;
+    for (i=0; i < strlen(text); i++){
+        LCD_Send((int)text[i], Rs | LCD_BACKLIGHT);
+    }
+}
+void LCD_WriteNum(unsigned int num) {
+    unsigned int reverseNum = 0;
+    unsigned int digits = 0;                    // To use as a digit counter. For now, no digits are counted yet until we enter the first while loop.
+    int i;                                      // This is for the for loop to run digits iterations.
+
+    if (num == 0) {                             // If the user input 0 on the keypad...
+        LCD_Send(0 | 0x30, Rs | LCD_BACKLIGHT); // ...then display 0 for 0% duty cycle.
+    }
+    else {
+
+        while (num > 0) {
+            reverseNum = reverseNum * 10 + (num % 10);
+            num /= 10;
+            digits++;                           // Increment digits; this means it is counting how many digits the user input from the keypad.
+        }
+
+        for(i = 0; i < digits; ++i) {           /* It will run digits iterations while it does the modulo and division operation. Now it knows how many digits
+                                                it will print. This fixes the zeroes issue; now it can display #0 and 100 on the LCD successfully. */
+            LCD_Send((reverseNum % 10) | 0x30, Rs | LCD_BACKLIGHT);
+            reverseNum /= 10;
+        }
+    }
+}
+void LCD_SetCursor(int col, int row) {      // This function converts a column and row to a single number the LCD is expecting to set the cursor position.
+    int row_offsets[] = { 0x00, 0x40, 0x14, 0x54 }; // The LCD must have an interface where the starting position of each row is 0x00, 0x40, 0x14, and 0x54.
+    LCD_Send(LCD_SETDDRAMADDR | (col + row_offsets[row]),  LCD_BACKLIGHT);
+}
+void LCD_ClearDisplay(void){
+    LCD_Send(LCD_CLEARDISPLAY,  LCD_BACKLIGHT);
+    __delay_cycles(50);
+}
+void LCD_leftToRight(void) {
+    LCD_Send(LCD_ENTRYMODESET | LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT,  LCD_BACKLIGHT);
+}
+void LCD_rightToLeft(void) {
+    LCD_Send(LCD_ENTRYMODESET | LCD_ENTRYRIGHT | LCD_ENTRYSHIFTDECREMENT,  LCD_BACKLIGHT);
+}
+void LCD_Setup(void){
+    int _init[] = {LCD_init, LCD_init, LCD_init, LCD_4_BIT};
+    int _setup[5];
+    int mode = LCD_BACKLIGHT;
+    _setup[0] = LCD_FUNCTIONSET | LCD_4BITMODE | LCD_2LINE | LCD_5x8DOTS;
+    _setup[1] = LCD_CLEARDISPLAY;
+    _setup[2] = LCD_RETURNHOME;
+    _setup[3] = LCD_ENTRYMODESET | LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT;
+    _setup[4] = LCD_DISPLAYCONTROL | LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF;
+
+    write4bits(_init[0]);   // Waiting for the enable function to be written.
+    __delay_cycles(108000);//__delay_cycles(4500*us);  <--- equivalent to this.      It is the value we need to establish between the enable.
+    write4bits(_init[1]);
+    __delay_cycles(108000);
+    write4bits(_init[2]);
+    __delay_cycles(3600);
+    write4bits(_init[3]);
+
+    LCD_Send(_setup[0], mode);
+    LCD_Send(_setup[1], mode);
+    __delay_cycles(50);
+    LCD_Send(_setup[2], mode);
+    LCD_Send(_setup[3], mode);
+    LCD_Send(_setup[4], mode);
+}
+#pragma vector = EUSCI_B0_VECTOR
+__interrupt void EUSCI_B0_I2C_ISR(void){
+    UCB0TXBUF = TXBUF;                      // The value that we want to transmit is in the buffer.
+}
