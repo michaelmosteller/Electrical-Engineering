@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Scanning on Android Device - PDR</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .presentation {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            padding: 50px 70px;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .slide-header {
+            border-bottom: 3px solid #00d4ff;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        .slide-header h1 {
+            font-size: 3em;
+            color: #00d4ff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+
+        .slide-header h2 {
+            font-size: 2.2em;
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+
+        .slide-content {
+            flex: 1;
+            font-size: 1.05em;
+            line-height: 1.6;
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            color: #a0d8f1;
+            margin-top: 10px;
+        }
+
+        .team-info {
+            font-size: 1.15em;
+            color: #e0e0e0;
+            line-height: 1.8;
+            margin-top: 20px;
+        }
+
+        .team-info strong {
+            color: #00d4ff;
+        }
+
+        .logo-box {
+            position: absolute;
+            bottom: 30px;
+            right: 70px;
+            width: 140px;
+            height: 140px;
+            background: #fff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #0f2027;
+            font-size: 1.4em;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .bullet-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 15px 0;
+        }
+
+        .bullet-list li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            font-size: 1.05em;
+        }
+
+        .bullet-list li:before {
+            content: "▸";
+            color: #00d4ff;
+            font-size: 1.4em;
+            position: absolute;
+            left: 0;
+        }
+
+        .nested-list {
+            margin-left: 20px;
+            margin-top: 8px;
+        }
+
+        .requirements-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9em;
+        }
+
+        .requirements-table th {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #00d4ff;
+        }
+
+        .requirements-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .requirements-table tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .diagram-box {
+            background: rgba(0,0,0,0.4);
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 2px solid #00d4ff;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            line-height: 1.8;
+        }
+
+        .flow-step {
+            background: rgba(0, 212, 255, 0.2);
+            border: 2px solid #00d4ff;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1em;
+        }
+
+        .arrow-down {
+            text-align: center;
+            color: #00d4ff;
+            font-size: 2em;
+            margin: 3px 0;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin: 20px 0;
+        }
+
+        .column {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .column h3 {
+            color: #00d4ff;
+            margin-bottom: 12px;
+            font-size: 1.3em;
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .nav-button {
+            background: rgba(0, 212, 255, 0.2);
+            border: 2px solid #00d4ff;
+            color: #00d4ff;
+            padding: 10px 25px;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .nav-button:hover {
+            background: #00d4ff;
+            color: #0f2027;
+            transform: scale(1.05);
+        }
+
+        .slide-number {
+            position: fixed;
+            top: 25px;
+            right: 25px;
+            background: rgba(0, 212, 255, 0.2);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.95em;
+            border: 1px solid #00d4ff;
+        }
+
+        .highlight {
+            color: #00d4ff;
+            font-weight: bold;
+        }
+
+        .section-heading {
+            color: #00d4ff;
+            font-size: 1.5em;
+            margin: 20px 0 10px 0;
+            border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+            padding-bottom: 8px;
+        }
+
+        .problem-box {
+            background: rgba(255, 71, 87, 0.1);
+            border-left: 5px solid #ff4757;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .solution-box {
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 5px solid #00d4ff;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .emphasis-box {
+            background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(94,255,143,0.2));
+            border: 2px solid #00d4ff;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        .risk-card {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ff4757;
+            margin: 10px 0;
+        }
+
+        .risk-card h4 {
+            color: #ff4757;
+            margin-bottom: 8px;
+        }
+
+        .mitigation {
+            color: #5eff8f;
+            margin-top: 8px;
+        }
+
+        .timeline-phase {
+            background: linear-gradient(to right, rgba(0, 212, 255, 0.2), rgba(0, 212, 255, 0.4));
+            border-left: 4px solid #00d4ff;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 5px;
+        }
+
+        .timeline-phase h4 {
+            color: #00d4ff;
+            margin-bottom: 5px;
+        }
+
+        strong {
+            color: #00d4ff;
+        }
+
+        .tbd {
+            color: #ff4757;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <div class="slide-number">Slide <span id="current-slide">1</span> / <span id="total-slides">20</span></div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active" data-slide="1">
+            <div class="slide-header">
+                <h1>3D SCANNING ON ANDROID DEVICE</h1>
+                <div class="subtitle">Preliminary Design Review (PDR)</div>
+            </div>
+            <div class="slide-content">
+                <div class="team-info">
+                    <p><strong>Project:</strong> 3D Scanning on Android Device</p>
+                    <p><strong>Course:</strong> EEL 4906 – Engineering Design 1</p>
+                    <p><strong>Sponsor:</strong> ISO Technologies Inc.</p>
+                    <br>
+                    <p><strong>Team Members:</strong></p>
+                    <ul class="bullet-list">
+                        <li>Michael Mosteller</li>
+                        <li>Benjamin Tedrowe</li>
+                        <li>Luis Pinto</li>
+                        <li>Jacob Rauscher</li>
+                    </ul>
+                    <br>
+                    <p><strong>Faculty Advisor:</strong> Xiaomin Lin</p>
+                    <p><strong>Date:</strong> November 2025</p>
+                    <br>
+                    <p><strong>Objective:</strong> Develop an Android app that captures 3D scans using the smartphone's built-in camera and sensors</p>
+                </div>
+            </div>
+            <div class="logo-box">ISO TECH</div>
+        </div>
+
+        <!-- Slide 2: Problem Statement -->
+        <div class="slide" data-slide="2">
+            <div class="slide-header">
+                <h2>Problem Statement & Motivation</h2>
+            </div>
+            <div class="slide-content">
+                <div class="problem-box">
+                    <h3 style="color: #ff4757; margin-bottom: 15px;">The Problem</h3>
+                    <ul class="bullet-list">
+                        <li>Custom prosthetic sockets traditionally require <strong>plaster molding</strong> and <strong>3D digitization</strong> — a costly, time-consuming process</li>
+                        <li>These barriers restrict access to custom prosthetics, especially in smaller or under-resourced clinics</li>
+                        <li>Traditional digitization equipment costs <strong>thousands of dollars</strong></li>
+                        <li>Process can be <strong>uncomfortable for patients</strong></li>
+                    </ul>
+                </div>
+
+                <div class="solution-box">
+                    <h3 style="color: #00d4ff; margin-bottom: 15px;">Our Solution</h3>
+                    <ul class="bullet-list">
+                        <li>Replace expensive 3D scanning hardware with a <strong>software-only smartphone solution</strong></li>
+                        <li>Use the phone's <strong>camera + IMU (accelerometer & gyroscope)</strong> to generate accurate 3D scans</li>
+                        <li>Make prosthetic fabrication <strong>faster, cheaper, and globally accessible</strong></li>
+                    </ul>
+                </div>
+
+                <div class="emphasis-box">
+                    <strong>Broader Impact:</strong> Accessibility, affordability, and portability for global health applications
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Mission Objective -->
+        <div class="slide" data-slide="3">
+            <div class="slide-header">
+                <h2>Mission Objective</h2>
+            </div>
+            <div class="slide-content">
+                <div class="section-heading">Create a Mobile 3D Scanning App Capable Of:</div>
+                <ul class="bullet-list">
+                    <li>Capturing <strong>synchronized camera + IMU (accelerometer + gyroscope)</strong> data</li>
+                    <li>Reconstructing a <strong>3D point cloud</strong> using photogrammetry (Structure from Motion)</li>
+                    <li>Providing <strong>real-time visual feedback</strong> during scanning</li>
+                    <li>Exporting scans to <strong>STL/OBJ formats</strong> for CAD and 3D printing</li>
+                </ul>
+
+                <div class="two-column" style="margin-top: 30px;">
+                    <div class="column">
+                        <h3>Performance Targets</h3>
+                        <ul class="bullet-list">
+                            <li><strong>Accuracy:</strong> ±5mm for limb scans</li>
+                            <li><strong>Processing Time:</strong> < 2 minutes per scan</li>
+                            <li><strong>Operation:</strong> Fully offline</li>
+                        </ul>
+                    </div>
+                    <div class="column">
+                        <h3>Key Features</h3>
+                        <ul class="bullet-list">
+                            <li>No cloud dependence</li>
+                            <li>Real-time preview</li>
+                            <li>Professional output formats</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Top-Level Requirements -->
+        <div class="slide" data-slide="4">
+            <div class="slide-header">
+                <h2>Top-Level (Driving) Requirements</h2>
+            </div>
+            <div class="slide-content">
+                <table class="requirements-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Requirement</th>
+                            <th>Verification Method</th>
+                            <th>How Requirement Will Be Met</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>Capture synchronized image + IMU data</td>
+                            <td>Inspection</td>
+                            <td>Camera2 API + SensorManager</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>Generate 3D point cloud</td>
+                            <td>Test</td>
+                            <td>Structure-from-Motion (COLMAP/OpenSfM)</td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>Accuracy ±5mm</td>
+                            <td>Test</td>
+                            <td>Compare against calibration object</td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td>Offline operation</td>
+                            <td>Demo</td>
+                            <td>Entire process runs on-device</td>
+                        </tr>
+                        <tr>
+                            <td>5</td>
+                            <td>Export STL/OBJ</td>
+                            <td>Demo</td>
+                            <td>PCL or Open3D export functions</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Slide 5: Derived Requirements -->
+        <div class="slide" data-slide="5">
+            <div class="slide-header">
+                <h2>Derived & Interface Requirements</h2>
+            </div>
+            <div class="slide-content">
+                <div class="section-heading">Additional System Requirements</div>
+                <ul class="bullet-list">
+                    <li>App size ≤ <strong>100 MB</strong></li>
+                    <li>Store ≥ <strong>10 completed scans</strong> locally</li>
+                    <li>Minimum hardware: <strong>Android 14+, 12 MP camera, 8 GB RAM</strong></li>
+                </ul>
+
+                <div class="section-heading" style="margin-top: 30px;">System Interfaces</div>
+                <div class="two-column">
+                    <div class="column">
+                        <h3>Hardware Interfaces</h3>
+                        <ul class="bullet-list">
+                            <li><strong>Camera2 API</strong> for imaging</li>
+                            <li><strong>SensorManager (IMU)</strong> for motion capture</li>
+                        </ul>
+                    </div>
+                    <div class="column">
+                        <h3>Software Interfaces</h3>
+                        <ul class="bullet-list">
+                            <li><strong>OpenCV</strong> for feature extraction + matching</li>
+                            <li><strong>COLMAP / OpenSfM</strong> for reconstruction</li>
+                            <li><strong>PCL / Open3D</strong> for point-cloud filtering + meshing</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: System Architecture -->
+        <div class="slide" data-slide="6">
+            <div class="slide-header">
+                <h2>System Architecture Overview</h2>
+            </div>
+            <div class="slide-content">
+                <div class="diagram-box">
+<pre style="margin: 0;">
+Camera2 API ─┐
+             ├─→ Image Buffer → Feature Extraction (OpenCV)
+IMU Sensors ─┘                ↓
+                    Sensor Fusion (EKF / Madgwick)
+                              ↓
+              SfM / MVS Reconstruction (COLMAP/OpenSfM)
+                              ↓
+                  Point Cloud Filtering (PCL)
+                              ↓
+              Mesh Generation → STL/OBJ Export
+                              ↓
+                   Real-Time Preview UI
+</pre>
+                </div>
+
+                <div class="emphasis-box" style="margin-top: 20px;">
+                    <strong>Modular Architecture:</strong> Enables swapping libraries (SfM, MVS, VIO)<br>
+                    Each module is independently testable
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Data Flow Diagram -->
+        <div class="slide" data-slide="7">
+            <div class="slide-header">
+                <h2>Data Flow Diagram</h2>
+            </div>
+            <div class="slide-content">
+                <div class="section-heading">Inputs</div>
+                <ul class="bullet-list">
+                    <li>RGB camera frames</li>
+                    <li>IMU (accelerometer + gyroscope) data</li>
+                </ul>
+
+                <div class="section-heading">Processing Chain</div>
+                <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 10px; margin: 15px 0;">
+                    <div class="flow-step">1. Feature Detection (ORB / SIFT)</div>
+                    <div class="arrow-down">↓</div>
+                    <div class="flow-step">2. Frame Matching (OpenCV)</div>
+                    <div class="arrow-down">↓</div>
+                    <div class="flow-step">3. Pose Estimation (Epipolar + EKF Fusion)</div>
+                    <div class="arrow-down">↓</div>
+                    <div class="flow-step">4. 3D Triangulation → Sparse Cloud</div>
+                    <div class="arrow-down">↓</div>
+                    <div class="flow-step">5. Multi-View Stereo → Dense Cloud</div>
+                    <div class="arrow-down">↓</div>
+                    <div class="flow-step">6. Mesh Reconstruction → STL/OBJ Export</div>
+                </div>
+
+                <div class="section-heading">Outputs</div>
+                <ul class="bullet-list">
+                    <li>3D model file (STL/OBJ)</li>
+                    <li>Real-time preview feedback</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 8: Sequence Diagram -->
+        <div class="slide" data-slide="8">
+            <div class="slide-header">
+                <h2>Sequence Diagram (Simplified)</h2>
+            </div>
+            <div class="slide-content">
+                <div class="diagram-box">
+                    <h3 style="color: #00d4ff; margin-bottom: 15px;">User Interaction Flow</h3>
+                    <ol style="line-height: 2; font-size: 1.05em;">
+                        <li>User opens app → <strong>"Start Scan"</strong></li>
+                        <li>Camera + IMU streams start recording</li>
+                        <li>Data synchronized and stored in memory</li>
+                        <li>Feature extraction and motion estimation begin</li>
+                        <li>Sparse reconstruction → Dense point cloud</li>
+                        <li>Mesh reconstruction and model export</li>
+                        <li>User reviews and saves 3D model</li>
+                    </ol>
+                </div>
+
+                <div class="emphasis-box" style="margin-top: 20px;">
+                    Shows synchronous communication and feedback loops between all system components
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: SWaP -->
+        <div class="slide" data-slide="9">
+            <div class="slide-header">
+                <h2>SWaP & System Performance</h2>
+            </div>
+            <div class="slide-content">
+                <table class="requirements-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Target</th>
+                            <th>Methodology</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Size</strong></td>
+                            <td>≤ 100 MB app</td>
+                            <td>Package inspection</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Weight</strong></td>
+                            <td>Software-only</td>
+                            <td>N/A</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Power</strong></td>
+                            <td>< 5 W during scan</td>
+                            <td>Android profiler</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Accuracy</strong></td>
+                            <td>± 5 mm</td>
+                            <td>Calibration test</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Scan Time</strong></td>
+                            <td>≤ 2 min</td>
+                            <td>Stopwatch testing</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Latency</strong></td>
+                            <td>≤ 100 ms preview</td>
+                            <td>Real-time measurement</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="emphasis-box" style="margin-top: 20px;">
+                    Power-efficient design achieved by throttled frame rate and sensor sampling
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Algorithm Trade Study -->
+        <div class="slide" data-slide="10">
+            <div class="slide-header">
+                <h2>Algorithm Trade Study</h2>
+            </div>
+            <div class="slide-content">
+                <table class="requirements-table" style="font-size: 0.85em;">
+                    <thead>
+                        <tr>
+                            <th>Algorithm</th>
+                            <th>Purpose</th>
+                            <th>Pros</th>
+                            <th>Cons</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>COLMAP</strong></td>
+                            <td>Full SfM + MVS</td>
+                            <td>Accurate, well-documented</td>
+                            <td>Heavy for mobile</td>
+                            <td style="color: #5eff8f;"><strong>Primary (offline or partial)</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>OpenSfM</strong></td>
+                            <td>Lightweight SfM</td>
+                            <td>Sensor integration support</td>
+                            <td>Python-based</td>
+                            <td>Backup pipeline</td>
+                        </tr>
+                        <tr>
+                            <td><strong>OpenVINS</strong></td>
+                            <td>VIO (pose tracking)</td>
+                            <td>Robust fusion</td>
+                            <td>Requires NDK integration</td>
+                            <td>Reference only</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Kimera-VIO</strong></td>
+                            <td>High-accuracy VIO + mesh</td>
+                            <td>Rich outputs</td>
+                            <td>Computationally heavy</td>
+                            <td>Reference only</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Dead Reckoning</strong></td>
+                            <td>IMU tracking</td>
+                            <td>Native Android example</td>
+                            <td>Drift</td>
+                            <td>Used for testing</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="emphasis-box" style="margin-top: 20px;">
+                    <strong>Chosen Configuration:</strong> COLMAP (SfM) + Madgwick/EKF sensor fusion for pose stabilization
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Technical Trade-offs -->
+        <div class="slide" data-slide="11">
+            <div class="slide-header">
+                <h2>Technical Trade-Offs</h2>
+            </div>
+            <div class="slide-content">
+                <div class="section-heading">Key Design Decisions</div>
+
+                <div class="solution-box">
+                    <h3 style="color: #00d4ff; margin-bottom: 10px;">On-device vs. Offline Processing</h3>
+                    <p><strong>Decision:</strong> Hybrid model — scanning + light processing on phone; heavy reconstruction optional offline</p>
+                    <p style="margin-top: 10px;"><strong>Rationale:</strong> Balances performance with accessibility and privacy</p>
+                </div>
+
+                <div class="solution-box">
+                    <h3 style="color: #00d4ff; margin-bottom: 10px;">Feature Algorithm Selection</h3>
+                    <p><strong>Decision:</strong> ORB over SIFT/SURF</p>
+                    <p style="margin-top: 10px;"><strong>Rationale:</strong> Faster mobile execution with acceptable accuracy</p>
+                </div>
+
+                <div class="solution-box">
+                    <h3 style="color: #00d4ff; margin-bottom: 10px;">Accuracy vs. Speed</h3>
+                    <p><strong>Decision:</strong> Tunable resolution and iteration count</p>
+                    <p style="margin-top: 10px;"><strong>Rationale:</strong> Allows user to choose based on their needs</p>
+                </div>
+
+                <div class="solution-box">
+                    <h3 style="color: #00d4ff; margin-bottom: 10px;">Hardware Independence</h3>
+                    <p><strong>Decision:</strong> No LiDAR / ToF sensors — camera-only solution</p>
+                    <p style="margin-top: 10px;"><strong>Rationale:</strong> Maximizes device compatibility and keeps costs low</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Test & Integration Plan -->
+        <div class="slide" data-slide="12">
+            <div class="slide-header">
+                <h2>Test & Integration Plan</h2>
+            </div>
+            <div class="slide-content">
+                <div class="section-heading">Verification Tests</div>
+                <ol class="bullet-list" style="list-style-position: inside;">
+                    <li><strong>3D Model Accuracy:</strong> Scan calibration cube; compare dimensions</li>
+                    <li><strong>Processing Speed:</strong> Validate scan completion < 2 min</li>
+                    <li><strong>Export Test:</strong> Open exported STL/OBJ in CAD software</li>
+                    <li><strong>Offline Functionality:</strong> Verify complete scan with no network</li>
+                </ol>
+
+                <div class="section-heading" style="margin-top: 25px;">Integration Plan</div>
+                <ul class="bullet-list">
+                    <li>Unit test each module (Camera, IMU, SfM, UI)</li>
+                    <li>End-to-end trial runs on Android device</li>
+                    <li>GitHub version control for traceability</li>
+                    <li>Regression testing after each algorithm update</li>
+                </ul>
+
+                <div class="emphasis-box" style="margin-top: 20px;">
+                    <strong>Testing Facilities:</strong> Android Studio, OpenCV, COLMAP testbed
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Risk Analysis -->
+        <div class="slide" data-slide="13">
+            <div class="slide-header">
+                <h2>Risk Analysis</h2>
+            </div>
+            <div class="slide-content">
+                <div class="risk-card">
+                    <h4>R1: Lighting Variability Causes Reconstruction Errors</h4>
+                    <p><strong>Impact:</strong> Medium</p>
+                    <p class="mitigation"><strong>Mitigation:</strong> Use preprocessing filters + user prompts for proper lighting</p>
+                </div>
+
+                <div class="risk-card">
+                    <h4>R2: Limited Phone CPU/GPU Resources</h4>
+                    <p><strong>Impact:</strong> High</p>
+                    <p class="mitigation"><strong>Mitigation:</strong> Optimize code, downsample images, use efficient algorithms</p>
+                </div>
+
+                <div class="risk-card">
+                    <h4>R3: IMU Drift During Scan</h4>
+                    <p><strong>Impact:</strong> High</p>
+                    <p class="mitigation"><strong>Mitigation:</strong> Implement periodic EKF recalibration</p>
+                </div>
+
+                <div class="risk-card">
+                    <h4>R4: User Motion Error</h4>
+                    <p><strong>Impact:</strong> Medium</p>
+                    <p class="mitigation"><strong>Mitigation:</strong> Real-time progress overlay + in-app tutorial</p>
+                </div>
+
+                <div class="risk-card">
+                    <h4>R5: API/Library Incompatibility</h4>
+                    <p><strong>Impact:</strong> Medium</p>
+                    <p class="mitigation"><strong>Mitigation:</strong> Modular interfaces + comprehensive testing</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: Preliminary Schedule -->
+        <div class="slide" data-slide="14">
+            <div class="slide-header">
+                <h2>Preliminary Schedule</h2>
+            </div>
+            <div class="slide-content">
+                <table class="requirements-table">
+                    <thead>
+                        <tr>
+                            <th>Week</th>
+                            <th>Task</th>
+                            <th>Deliverable</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1–2</td>
+                            <td>Algorithm research + Android setup</td>
+                            <td>Library selection</td>
+                        </tr>
+                        <tr>
+                            <td>3–4</td>
+                            <td>Image + IMU capture prototype</td>
+                            <td>Sensor sync test</td>
+                        </tr>
+                        <tr>
+                            <td>5–6</td>
+                            <td>SfM integration</td>
+                            <td>Sparse point cloud</td>
+                        </tr>
+                        <tr>
+                            <td>7–8</td>
+                            <td>Dense reconstruction + UI integration</td>
+                            <td>Working model</td>
+                        </tr>
+                        <tr>
+                            <td>9</td>
+                            <td>Testing + accuracy validation</td>
+                            <td>Verification report</td>
+                        </tr>
+                        <tr>
+                            <td>10</td>
+                            <td>PDR presentation + documentation</td>
+                            <td>Full PDR submission</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="emphasis-box" style="margin-top: 20px;">
+                    Faculty deadlines and milestones highlighted throughout development cycle
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: Bill of Materials -->
+        <div class="slide" data-slide="15">
+            <div class="slide-header">
+                <h2>Bill of Materials (Software-Focused)</h2>
+            </div>
+            <div class="slide-content">
+                <table class="requirements-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Description</th>
+                            <th>Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Android device (test platform)</td>
+                            <td>12 MP camera, 8 GB RAM</td>
+                            <td>$0 (provided)</td>
+                        </tr>
+                        <tr>
+                            <td>Android Studio + NDK</td>
+                            <td>Development environment</td>
+                            <td>Free</td>
+                        </tr>
+                        <tr>
+                            <td>OpenCV, COLMAP, PCL libraries</td>
+                            <td>Open-source packages</td>
+                            <td>Free</td>
+                        </tr>
+                        <tr>
+                            <td>3D export utilities (STL/OBJ)</td>
+                            <td>Built-in libraries</td>
+                            <td>Free</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="emphasis-box" style="margin-top: 30px; font-size: 1.4em;">
+                    <strong>Total Estimated Cost:</strong> <$500<br>
+                    <span style="font-size: 0.8em; margin-top: 10px; display: block;">(testing / support hardware only)</span>
+                </div>
+
+                <div class="solution-box" style="margin-top: 20px;">
+                    <p><strong>Note:</strong> All core software is open-source, ensuring long-term sustainability and accessibility</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 16: Standards & Compliance -->
+        <div class="slide" data-slide="16">
+            <div class="slide-header">
+                <h2>Standards & Compliance</h2>
+            </div>
+            <div class="slide-content">
+                <div class="section-heading">Applicable Standards</div>
+                <ul class="bullet-list">
+                    <li><strong>IEEE 802</strong> – Data communication and software design standards</li>
+                    <li><strong>OpenCV & PCL BSD</strong> – Licensing compliance for open-source libraries</li>
+                    <li><strong>ISO/ASTM 52900</strong> – Additive Manufacturing Standards for 3D printing</li>
+                    <li><strong>Android SDK</strong> – Coding standards and best practices</li>
+                    <li><strong>Open-source ethics</strong> – Adhere to BSD/GPL licensing requirements</li>
+                </ul>
+
+                <div class="section-heading" style="margin-top: 30px;">Data Privacy & Security</div>
+                <div class="solution-box">
+                    <ul class="bullet-list">
+                        <li><strong>Local Processing:</strong> All scans processed on-device, no cloud upload</li>
+                        <li><strong>User Control:</strong> Complete control over data storage and deletion</li>
+                        <li><strong>No PII Collection:</strong> No personally identifiable information stored</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 17: Engineering Ethics -->
+        <div class="slide" data-slide="17">
+            <div class="slide-header">
+                <h2>Engineering Ethical Responsibilities</h2>
+            </div>
+            <div class="slide-content">
+                <div class="two-column">
+                    <div class="column">
+                        <h3>🏥 Public Health</h3>
+                        <p>Improves access to affordable prosthetic design in underserved communities</p>
+                    </div>
+                    <div class="column">
+                        <h3>🔒 Safety</h3>
+                        <p>Calibration ensures safe, accurate fittings for patient comfort</p>
+                    </div>
+                </div>
+
+                <div class="two-column">
+                    <div class="column">
+                        <h3>🌍 Global & Cultural</h3>
+                        <p>Supports clinics in resource-limited regions worldwide</p>
+                    </div>
+                    <div class="column">
+                        <h3>💰 Economic</h3>
+                        <p>Software-based solution reduces hardware waste and cost barriers</p>
+                    </div>
+                </div>
+
+                <div class="emphasis-box" style="margin-top: 30px;">
+                    <h3 style="margin-bottom: 15px;">♻ Environmental Impact</h3>
+                    <p>Extends phone lifespan and avoids new device production<br>
+                    Reduces material waste from traditional plaster molds</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 18: Review Action Items -->
+        <div class="slide" data-slide="18">
+            <div class="slide-header">
+                <h2>Review Action Items</h2>
+            </div>
+            <div class="slide-content">
+                <div class="section-heading">Items for Team Review</div>
+                <ul class="bullet-list" style="font-size: 1.15em;">
+                    <li><span class="tbd">Confirm selected SfM library</span> (COLMAP or OpenSfM)</li>
+                    <li>Add UI wireframes and app workflow screens</li>
+                    <li>Measure power draw during active scan</li>
+                    <li>Validate STL export on Android device</li>
+                    <li>Complete initial prototype testing</li>
+                </ul>
+
+                <div class="section-heading" style="margin-top: 30px;">Next Milestones</div>
+                <div class="timeline-phase">
+                    <h4>Week 6-7: SfM Module Integration</h4>
+                    <p>Complete integration of chosen reconstruction library</p>
+                </div>
+                <div class="timeline-phase">
+                    <h4>Week 8: Accuracy Validation</h4>
+                    <p>Test with calibration objects and verify ±5mm target</p>
+                </div>
+                <div class="timeline-phase">
+                    <h4>Week 9: UI Development</h4>
+                    <p>Polish user interface and real-time feedback systems</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 19: References -->
+        <div class="slide" data-slide="19">
+            <div class="slide-header">
+                <h2>References</h2>
+            </div>
+            <div class="slide-content">
+                <div class="section-heading">Key Technical References</div>
+                <ol class="bullet-list" style="list-style-position: inside; line-height: 2;">
+                    <li>Schönberger & Frahm, <em>COLMAP: Structure-from-Motion and Multi-View Stereo</em>, CVPR 2016</li>
+                    <li>Mur-Artal et al., <em>Visual-Inertial Odometry on Mobile Devices</em>, IEEE 2017</li>
+                    <li>OpenCV Documentation & API Guide</li>
+                    <li>Point Cloud Library (PCL) Documentation</li>
+                    <li>ISO Technologies Internal Technical Brief, 2025</li>
+                    <li>Android Camera2 API Documentation</li>
+                    <li>Android SensorManager Documentation</li>
+                </ol>
+
+                <div class="section-heading" style="margin-top: 30px;">Project Documentation</div>
+                <ul class="bullet-list">
+                    <li>3D Scanning on Android Device System Requirements Document (SRD), October 2024</li>
+                    <li>Project Charter: 3D Scanning on Android Device, ISO Technologies Inc, 2025</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 20: Appendix -->
+        <div class="slide" data-slide="20">
+            <div class="slide-header">
+                <h2>Appendix / Backup</h2>
+            </div>
+            <div class="slide-content">
+                <div class="section-heading">Additional Materials Available</div>
+                <ul class="bullet-list" style="font-size: 1.1em;">
+                    <li>Photogrammetry algorithm comparison table</li>
+                    <li>Preliminary UI mockups (in development)</li>
+                    <li>Example SfM pipeline diagram</li>
+                    <li>Test result screenshots (when available)</li>
+                    <li>Detailed system sequence diagrams</li>
+                    <li>Data flow diagrams with timing analysis</li>
+                    <li>State transition diagrams for all system states</li>
+                </ul>
+
+                <div class="emphasis-box" style="margin-top: 40px; font-size: 1.5em;">
+                    <strong>Questions?</strong>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px; font-size: 1.1em; color: #a0d8f1;">
+                    Thank you for your attention!<br>
+                    Team: Michael Mosteller, Benjamin Tedrowe, Luis Pinto, Jacob Rauscher
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button class="nav-button" onclick="previousSlide()">◀ Previous</button>
+            <button class="nav-button" onclick="nextSlide()">Next ▶</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 20;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            
+            if (n > totalSlides) currentSlide = totalSlides;
+            if (n < 1) currentSlide = 1;
+            
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[currentSlide - 1].classList.add('active');
+            
+            document.getElementById('current-slide').textContent = currentSlide;
+            document.getElementById('total-slides').textContent = totalSlides;
+        }
+
+        function nextSlide() {
+            currentSlide++;
+            if (currentSlide > totalSlides) currentSlide = totalSlides;
+            showSlide(currentSlide);
+        }
+
+        function previousSlide() {
+            currentSlide--;
+            if (currentSlide < 1) currentSlide = 1;
+            showSlide(currentSlide);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                event.preventDefault();
+                nextSlide();
+            } else if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                previousSlide();
+            }
+        });
+
+        // Initialize
+        showSlide(currentSlide);
+    </script>
+</body>
+</html>
